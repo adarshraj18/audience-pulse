@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Audience Pulse: batch review sentiment reader</title>
+  <meta name="description" content="Paste a batch of audience reviews and get an instant pulse score, sentiment split, and the harshest reviews worth reading first." />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 13a8 8 0 0116 0" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M4 13v6a1 1 0 001 1h2a1 1 0 001-1v-4a1 1 0 00-1-1H4z" fill="white"/>
+            <path d="M20 13v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-4a1 1 0 011-1h3z" fill="white"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Audience Pulse</h1>
+          <p class="tagline">Read a room full of reviews in one pass</p>
+        </div>
+      </div>
+      <button class="theme-toggle" id="themeToggle" type="button">Dark mode</button>
+    </header>
+
+    <section class="intro">
+      <h2>What does the audience actually think?</h2>
+      <p>
+        Paste in a batch of reviews for a film, show, or any title and get an instant
+        read: an overall pulse score, how split opinion is, and the harshest reviews
+        surfaced first so you don't have to scroll to find them. Built for content and
+        marketing teams who need a quick signal, not a spreadsheet.
+      </p>
+    </section>
+
+    <section class="card input-card">
+      <label for="reviews">
+        <span>Paste reviews, one per line, or separated by a blank line</span>
+        <span class="hint" id="reviewCount"></span>
+      </label>
+      <textarea id="reviews" placeholder="This was one of the best films I've seen all year, the pacing never let up...
+
+Honestly disappointing. The trailer promised so much more than this delivered...
+
+A solid watch. Not perfect, but the lead performance carries it."></textarea>
+      <div class="input-footer">
+        <button class="sample-btn" id="sampleBtn" type="button">Try a sample batch</button>
+        <button class="analyze-btn" id="analyzeBtn" type="button">
+          <span class="spinner" id="spinner"></span>
+          <span id="analyzeLabel">Analyze pulse</span>
+        </button>
+      </div>
+      <div class="error-banner" id="errorBanner"></div>
+    </section>
+
+    <section id="results">
+      <div class="pulse-row">
+        <div class="card meter-card">
+          <span class="meter-label">Pulse score</span>
+          <div class="meter-figure"><span id="pulseFigure">0</span><span class="unit">/100</span></div>
+          <div class="meter">
+            <div class="meter-track"><div class="meter-fill" id="meterFill"></div></div>
+          </div>
+          <span class="meter-caption" id="pulseCaption">share of reviews reading positive</span>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-tile">
+            <span class="stat-label"><span class="dot good"></span>Positive reviews</span>
+            <span class="stat-value" id="positiveCount">0</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label"><span class="dot critical"></span>Negative reviews</span>
+            <span class="stat-value" id="negativeCount">0</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Reviews analyzed</span>
+            <span class="stat-value" id="totalCount">0</span>
+          </div>
+
+          <div class="stat-tile split-bar-tile">
+            <span class="stat-label">Sentiment split</span>
+            <div class="split-bar">
+              <div class="seg good" id="splitGood"></div>
+              <div class="seg critical" id="splitBad"></div>
+            </div>
+            <div class="split-legend">
+              <span><span class="dot good"></span><span id="splitGoodLabel">0% positive</span></span>
+              <span><span class="dot critical"></span><span id="splitBadLabel">0% negative</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="section-title">🔥 Read these first: harshest reviews</h3>
+      <div class="review-list" id="harshList"></div>
+
+      <h3 class="section-title">All reviews</h3>
+      <div class="review-list collapsed" id="allList"></div>
+      <button class="show-more-btn" id="showMoreBtn" type="button">Show all reviews</button>
+    </section>
+
+    <footer>
+      <span>Model: Embedding → SimpleRNN → Dense, trained on 50k labelled reviews. NumPy inference, no TensorFlow at request time.</span>
+      <a href="https://github.com/adarshraj18/audience-pulse" target="_blank" rel="noopener">Source on GitHub</a>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

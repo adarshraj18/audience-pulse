@@ -1,0 +1,10 @@
+.venv/
+.git/
+.pytest_cache/
+__pycache__/
+*.pyc
+tests/
+training/
+notebooks/
+*.ipynb
+.DS_Store

@@ -1,0 +1,8 @@
+# Runtime dependencies for the deployed app only.
+# No TensorFlow here on purpose: inference runs on a hand-written NumPy
+# forward pass (app/model.py), verified to match Keras in tests/. TensorFlow
+# is only needed to train the model; see training/requirements.txt.
+fastapi==0.128.8
+uvicorn[standard]==0.39.0
+pydantic==2.13.4
+numpy==1.26.4

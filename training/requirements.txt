@@ -1,0 +1,10 @@
+# Extra dependencies needed only to retrain the model or run the full test
+# suite (which checks the NumPy inference path against real Keras output).
+# Not installed in the deployed app; see ../requirements.txt for that.
+#
+# On Apple Silicon, install tensorflow-macos==2.16.2 instead of tensorflow.
+# The plain PyPI build has no native arm64 wheel.
+-r ../requirements.txt
+tensorflow==2.16.2
+pytest==8.4.2
+httpx==0.28.1
