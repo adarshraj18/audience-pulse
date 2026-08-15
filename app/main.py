@@ -9,7 +9,11 @@ demo. It exists for two reasons:
    deployment target, since the static bundle works unmodified either way.
 2. /api/analyze exposes the same, separately-tested batch analysis as a
    plain JSON API, for anyone who wants programmatic access without
-   shipping the model to a client.
+   shipping the model to a client. Worth knowing: this loop is per-review
+   and unbatched, which is fine on a real CPU but noticeably slow on
+   constrained free-tier hosting (single review took ~8s on Render's free
+   plan). That's exactly why the live deployment scores in the browser
+   instead of calling this endpoint.
 """
 
 from __future__ import annotations

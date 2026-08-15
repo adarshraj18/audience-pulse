@@ -16,15 +16,14 @@ harshest reviews surfaced first.
 
 ```bash
 git clone https://github.com/adarshraj18/audience-pulse.git
-cd audience-pulse
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+cd audience-pulse/app/static
+python3 -m http.server 8000
 ```
 
 Open `http://127.0.0.1:8000` and paste in a batch of reviews (one per line, or
 separated by a blank line). There's a "Try a sample batch" button if you just want
-to see it work.
+to see it work. No `pip install` needed for this: analysis runs entirely in your
+browser, so serving the static files is all that's required.
 
 ## 📌 Problem
 
@@ -41,28 +40,34 @@ in one request.
    from scratch on the [Stanford Large Movie Review Dataset](https://ai.stanford.edu/~amaas/data/sentiment/)
    (50,000 IMDB reviews, balanced positive/negative), via `tensorflow.keras.datasets.imdb`.
    See [`training/train.py`](training/train.py).
-2. **Serving without TensorFlow.** Training happens once, offline, in Keras. The
-   trained weights are then exported to plain NumPy arrays (`model/weights.npz`),
-   and the deployed app reimplements the forward pass (embedding lookup, the
-   RNN's step-by-step recurrence, the sigmoid output) in about 60 lines of NumPy
-   (`app/model.py`). This is checked against the real Keras model in
-   [`tests/test_model_matches_keras.py`](tests/test_model_matches_keras.py)
-   (agreement within 1e-4), so it's a verified equivalent, not an approximation.
-   The payoff: the deployed app needs only `fastapi`, `uvicorn`, and `numpy`, with
-   no ~600MB TensorFlow install and fast cold starts.
+2. **Inference runs in the browser.** Training happens once, offline, in Keras.
+   The trained weights are then exported to raw Float32 binaries a browser can
+   `fetch()` directly (`app/static/model/*.bin`, via
+   [`training/export_web_weights.py`](training/export_web_weights.py)), and the
+   deployed app reimplements the forward pass (embedding lookup, the RNN's
+   step-by-step recurrence, the sigmoid output) in vanilla JavaScript
+   (`app/static/model.js`) that runs on the visitor's own device. A second,
+   NumPy implementation of the same forward pass (`app/model.py`) backs an
+   optional server-side API. Both are checked against each other and against
+   Keras: [`tests/test_model_matches_keras.py`](tests/test_model_matches_keras.py)
+   for Keras vs. NumPy, and [`scripts/verify_js_model.mjs`](scripts/verify_js_model.mjs)
+   for NumPy vs. JavaScript, both agreeing within 1e-4. So what runs in a
+   visitor's browser is a verified equivalent of the trained model, not an
+   approximation.
 
-   The same forward pass also has a third implementation, in vanilla JavaScript
-   (`app/static/model.js` and `text.js`/`analyze.js`), verified against the NumPy
-   version by [`scripts/verify_js_model.mjs`](scripts/verify_js_model.mjs). It's
-   not used by the live deployment (the FastAPI backend does the scoring), but
-   it's a fully working, tested alternative for anyone who'd rather run this as
-   a pure static site with no backend at all: swap `index.html`'s script tag
-   from `app.js` to [`app.offline.js`](app/static/app.offline.js), and nothing
-   pasted into the app ever leaves the visitor's browser.
-3. **Batch analysis.** [`app/analyze.py`](app/analyze.py) splits pasted text into
-   individual reviews, scores each one, and aggregates a pulse score (share of
-   reviews reading positive), the positive/negative split, and the five most
-   negative reviews.
+   Why the browser and not a server: I first deployed this behind a FastAPI
+   backend on Render's free tier, and a single review took roughly 8 seconds to
+   score there, since free-tier CPUs are heavily throttled and this model's
+   per-timestep loop isn't a great fit for that. The same forward pass in a
+   visitor's browser scores in single-digit milliseconds, since it runs on
+   their own, much less constrained, device. `app/main.py` still exposes
+   `/api/analyze` as a plain JSON API for anyone who wants server-side scoring
+   on infrastructure with real CPU; it just isn't what the live demo uses.
+3. **Batch analysis.** [`app/analyze.py`](app/analyze.py) (and its browser
+   counterpart, `app/static/analyze.js`) splits pasted text into individual
+   reviews, scores each one, and aggregates a pulse score (share of reviews
+   reading positive), the positive/negative split, and the five most negative
+   reviews.
 4. **Confidence signal.** Each review also gets a *coverage* score: the share of
    its words the model actually recognises from its 10,000-word vocabulary. A
    review full of rare words, slang, or non-English text gets flagged
@@ -103,51 +108,58 @@ note above for why that trade-off is intentional here.
 ```
 .
 ├── app/
-│   ├── main.py            # FastAPI app: /api/analyze, /api/health, serves the frontend
-│   ├── analyze.py          # Batch splitting + pulse/aggregate logic
-│   ├── model.py            # NumPy-only inference (no TensorFlow at request time)
-│   ├── text.py             # Tokeniser / encoder, matches the IMDB vocabulary
-│   └── static/              # Frontend: index.html, styles.css, app.js (no build step)
-│       ├── app.js            # Default entry point: calls the server's /api/analyze
-│       ├── app.offline.js     # Alternate entry point: runs inference in-browser instead
-│       ├── model.js           # Client-side inference (JS port of app/model.py)
-│       ├── text.js            # Tokeniser / encoder (JS port of app/text.py)
-│       ├── analyze.js         # Batch analysis (JS port of app/analyze.py)
-│       └── model/               # Browser-loadable weights, used only by app.offline.js
+│   ├── main.py             # FastAPI app: optional /api/analyze JSON API, serves the frontend
+│   ├── analyze.py           # Batch splitting + pulse/aggregate logic (Python)
+│   ├── model.py             # NumPy-only inference (Python reference implementation)
+│   ├── text.py              # Tokeniser / encoder, matches the IMDB vocabulary (Python)
+│   └── static/               # The deployed app: index.html, styles.css, app.js
+│       ├── app.js             # Default entry point: scores reviews in the browser
+│       ├── app.server.js       # Alternate entry point: calls the server's /api/analyze
+│       ├── model.js            # Client-side inference (JS port of app/model.py)
+│       ├── text.js             # Tokeniser / encoder (JS port of app/text.py)
+│       ├── analyze.js          # Batch analysis (JS port of app/analyze.py)
+│       └── model/                # Browser-loadable weights, used by app.js
 ├── training/
-│   ├── train.py              # Trains the model, exports weights.npz + vocab.json
-│   ├── export_web_weights.py  # Exports the browser (.bin) version, for app.offline.js
-│   └── requirements.txt       # Extra deps needed only to retrain (TensorFlow, pytest)
+│   ├── train.py               # Trains the model, exports weights.npz + vocab.json
+│   ├── export_web_weights.py   # Exports the browser (.bin) version to app/static/model/
+│   └── requirements.txt        # Extra deps needed only to retrain (TensorFlow, pytest)
 ├── model/
-│   ├── weights.npz           # Trained weights, plain NumPy arrays
-│   ├── vocab.json            # Word to id vocabulary used at both train and serve time
-│   └── metrics.json          # Test accuracy/loss from the last training run
+│   ├── weights.npz            # Trained weights, plain NumPy arrays
+│   ├── vocab.json             # Word to id vocabulary used at both train and serve time
+│   └── metrics.json           # Test accuracy/loss from the last training run
 ├── scripts/
-│   └── verify_js_model.mjs    # Confirms app.offline.js's model.js matches app/model.py
-├── tests/                     # Unit tests + NumPy-vs-Keras equivalence check
-├── render.yaml                 # Render Blueprint: one-click deploy from this repo
-├── Dockerfile                  # Deployment image (used for the live demo)
-└── requirements.txt            # Runtime deps for the deployed app only
+│   └── verify_js_model.mjs     # Confirms app/static/model.js matches app/model.py
+├── tests/                      # Python unit tests + NumPy-vs-Keras equivalence check
+├── render.yaml                  # Render Blueprint: one-click deploy from this repo
+├── Dockerfile                   # Runs app/main.py in a container (serves the same static bundle)
+└── requirements.txt             # Runtime deps for app/main.py
 ```
 
 ## 🚀 Running Locally
 
+The deployed app has no backend dependency, so running it locally just means
+serving static files:
+
 ```bash
-# 1. Clone the repo
 git clone https://github.com/adarshraj18/audience-pulse.git
-cd audience-pulse
-
-# 2. Create a virtual environment
-python3 -m venv .venv && source .venv/bin/activate
-
-# 3. Install runtime dependencies (no TensorFlow needed to just run the app)
-pip install -r requirements.txt
-
-# 4. Launch
-uvicorn app.main:app --reload
+cd audience-pulse/app/static
+python3 -m http.server 8000
 ```
 
-Then open `http://127.0.0.1:8000`.
+Then open `http://127.0.0.1:8000`. (A browser refuses to run ES modules or
+fetch local files over a bare `file://` URL, hence the tiny local server; any
+static file server works, this one just ships with Python.)
+
+### Running the optional FastAPI backend
+
+Not required to use the app, but useful for local development with autoreload,
+or if you want `/api/analyze` as a plain JSON endpoint:
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
 ### Retraining the model
 
@@ -155,16 +167,8 @@ Only needed if you want to change the architecture or retrain from scratch:
 
 ```bash
 pip install -r training/requirements.txt
-python training/train.py
-```
-
-This downloads the IMDB dataset via Keras, trains the model, and overwrites
-`model/weights.npz`, `model/vocab.json`, and `model/metrics.json`. If you're
-also using the offline/static entry point (`app.offline.js`), re-export its
-browser weights too:
-
-```bash
-python training/export_web_weights.py
+python training/train.py               # trains the model, writes model/weights.npz etc.
+python training/export_web_weights.py  # exports the browser version to app/static/model/
 ```
 
 ### Running tests
@@ -174,25 +178,23 @@ python training/export_web_weights.py
 pip install -r training/requirements.txt  # pulls in TensorFlow + pytest
 pytest tests/
 
-# JavaScript: NumPy-vs-browser equivalence, only relevant if you use app.offline.js
+# JavaScript: NumPy-vs-browser equivalence (no npm install needed, no dependencies)
 node scripts/verify_js_model.mjs
 ```
 
 ## 📦 Deployment
 
-The live demo runs the FastAPI app in a Docker container on
-[Render](https://render.com)'s free tier, deployed straight from this GitHub
-repo via [`render.yaml`](render.yaml) (a Render Blueprint): connect the repo
-on Render, and it builds [`Dockerfile`](Dockerfile) and deploys automatically
-on every push to `main`. The free tier spins the service down after 15 minutes
-without traffic, so the first request after a quiet period can take 30-50
-seconds while it wakes back up.
+The live demo is hosted on [Render](https://render.com)'s free tier, deployed
+straight from this GitHub repo via [`render.yaml`](render.yaml) (a Render
+Blueprint): connect the repo on Render, and it builds [`Dockerfile`](Dockerfile)
+and redeploys automatically on every push to `main`. The free tier spins the
+service down after 15 minutes without traffic, so the first request after a
+quiet period can take 30-50 seconds while it wakes back up; after that, pages
+load quickly since the app itself is a static bundle.
 
-The model runs server-side here, scored by the same NumPy implementation
-(`app/model.py`) that's verified against Keras. TensorFlow never ships to
-production either way: the Docker image only installs
-[`requirements.txt`](requirements.txt) (`fastapi`, `uvicorn`, `pydantic`,
-`numpy`).
+Scoring happens in the visitor's browser, not on Render's server (see the
+design note in Approach above for why). That also means Render's free-tier CPU
+constraints don't affect how the app actually feels to use once it's awake.
 
 ## 🔭 Next Steps
 
