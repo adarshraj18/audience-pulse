@@ -3,7 +3,8 @@
 // the pulse meter, the sentiment split, and the review lists. No framework,
 // no build step, and nothing pasted or searched ever leaves the visitor's
 // machine except the TMDB lookup itself (tmdb.js), which goes straight from
-// their browser to TMDB using a key they provide.
+// their browser to TMDB using this app's shared API key (see tmdb.js for why
+// that's fine to ship publicly).
 //
 // Two ways in: search a movie (fetches its reviews from TMDB) or paste
 // reviews from anywhere. Both end up calling Analyzer.analyzeTexts and the
@@ -19,9 +20,7 @@
 import { SentimentModel } from "./model.js";
 import { Encoder } from "./text.js";
 import { Analyzer } from "./analyze.js";
-import { searchMovies, fetchReviews } from "./tmdb.js";
-
-const TMDB_KEY_STORAGE = "audience-pulse-tmdb-key";
+import { searchMovies, fetchReviews, DEFAULT_API_KEY } from "./tmdb.js";
 
 const SAMPLE_BATCH = `This was one of the best films I've seen all year. The pacing never let up and the ending actually earned its emotional weight.
 
@@ -67,15 +66,10 @@ const els = {
   tabPaste: document.getElementById("tabPaste"),
   searchPanel: document.getElementById("searchPanel"),
   pastePanel: document.getElementById("pastePanel"),
-  apiKeySetup: document.getElementById("apiKeySetup"),
-  apiKeyInput: document.getElementById("apiKeyInput"),
-  apiKeySave: document.getElementById("apiKeySave"),
-  movieSearchRow: document.getElementById("movieSearchRow"),
   movieQuery: document.getElementById("movieQuery"),
   movieSearchBtn: document.getElementById("movieSearchBtn"),
   searchSpinner: document.getElementById("searchSpinner"),
   searchLabel: document.getElementById("searchLabel"),
-  changeKeyBtn: document.getElementById("changeKeyBtn"),
   movieResults: document.getElementById("movieResults"),
   searchStatus: document.getElementById("searchStatus"),
 };
@@ -230,56 +224,9 @@ function switchTab(mode) {
 els.tabSearch.addEventListener("click", () => switchTab("search"));
 els.tabPaste.addEventListener("click", () => switchTab("paste"));
 
-// ---------- TMDB API key (stored only in this browser) ----------
-
-function getStoredApiKey() {
-  try {
-    return localStorage.getItem(TMDB_KEY_STORAGE) || "";
-  } catch (err) {
-    return "";
-  }
-}
-
-function setStoredApiKey(key) {
-  try {
-    localStorage.setItem(TMDB_KEY_STORAGE, key);
-  } catch (err) {
-    // ignore; the key will just need to be re-entered next visit
-  }
-}
-
-function clearStoredApiKey() {
-  try {
-    localStorage.removeItem(TMDB_KEY_STORAGE);
-  } catch (err) {
-    // ignore
-  }
-}
-
-function refreshApiKeyUi() {
-  const hasKey = Boolean(getStoredApiKey());
-  els.apiKeySetup.classList.toggle("hidden", hasKey);
-  els.movieSearchRow.classList.toggle("hidden", !hasKey);
-}
-
-els.apiKeySave.addEventListener("click", () => {
-  const key = els.apiKeyInput.value.trim();
-  if (!key) return;
-  setStoredApiKey(key);
-  els.apiKeyInput.value = "";
-  refreshApiKeyUi();
-  els.movieQuery.focus();
-});
-
-els.changeKeyBtn.addEventListener("click", () => {
-  clearStoredApiKey();
-  clearError();
-  els.movieResults.innerHTML = "";
-  els.searchStatus.textContent = "";
-  refreshApiKeyUi();
-});
-
 // ---------- Movie search (TMDB) ----------
+// Uses this app's shared DEFAULT_API_KEY (see tmdb.js), so there's no setup
+// step: visitors can search the moment the page loads.
 
 async function searchMovie() {
   const query = els.movieQuery.value.trim();
@@ -290,23 +237,18 @@ async function searchMovie() {
     showError("Type a movie name first.");
     return;
   }
-  const apiKey = getStoredApiKey();
-  if (!apiKey) {
-    refreshApiKeyUi();
-    return;
-  }
 
   els.movieSearchBtn.disabled = true;
   els.searchSpinner.classList.add("active");
   els.searchLabel.textContent = "Searching…";
 
   try {
-    const movies = await searchMovies(query, apiKey);
+    const movies = await searchMovies(query, DEFAULT_API_KEY);
     if (!movies.length) {
       els.searchStatus.textContent = `No matches for "${query}" on TMDB.`;
       return;
     }
-    renderMovieResults(movies, apiKey);
+    renderMovieResults(movies);
   } catch (err) {
     showError(err.message || "Search failed. Try again.");
   } finally {
@@ -316,7 +258,7 @@ async function searchMovie() {
   }
 }
 
-function renderMovieResults(movies, apiKey) {
+function renderMovieResults(movies) {
   els.movieResults.innerHTML = movies
     .map((m, i) => {
       const poster = m.posterUrl
@@ -334,11 +276,11 @@ function renderMovieResults(movies, apiKey) {
     .join("");
 
   els.movieResults.querySelectorAll(".movie-result-card").forEach((btn, i) => {
-    btn.addEventListener("click", () => selectMovie(movies[i], apiKey));
+    btn.addEventListener("click", () => selectMovie(movies[i]));
   });
 }
 
-async function selectMovie(movie, apiKey) {
+async function selectMovie(movie) {
   clearError();
   els.searchStatus.textContent = `Fetching reviews for ${movie.title}…`;
 
@@ -348,7 +290,7 @@ async function selectMovie(movie, apiKey) {
   }
 
   try {
-    const texts = await fetchReviews(movie.id, apiKey);
+    const texts = await fetchReviews(movie.id, DEFAULT_API_KEY);
     if (!texts.length) {
       els.searchStatus.textContent = `TMDB has no written reviews for ${movie.title} (${movie.year}). Its review coverage is thin for a lot of titles; try the Paste tab with reviews copied from elsewhere instead.`;
       return;
@@ -365,8 +307,6 @@ els.movieSearchBtn.addEventListener("click", searchMovie);
 els.movieQuery.addEventListener("keydown", (e) => {
   if (e.key === "Enter") searchMovie();
 });
-
-refreshApiKeyUi();
 
 els.textarea.addEventListener("input", countReviews);
 els.analyzeBtn.addEventListener("click", analyze);

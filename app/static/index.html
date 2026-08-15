@@ -43,26 +43,18 @@
       </div>
 
       <div class="mode-panel" id="searchPanel">
-        <div class="api-key-setup" id="apiKeySetup">
-          <p class="panel-hint">
-            Search pulls real audience reviews from
-            <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>, using a free API key you
-            provide. It's stored only in this browser and sent only to TMDB, never to me or anyone else.
-          </p>
-          <div class="api-key-row">
-            <input type="text" id="apiKeyInput" placeholder="Paste your TMDB API key" autocomplete="off" />
-            <button class="secondary-btn" id="apiKeySave" type="button">Save key</button>
-          </div>
-          <a class="get-key-link" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">Get a free API key →</a>
-        </div>
+        <p class="panel-hint">
+          Pulls real audience reviews from
+          <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>. Coverage varies by title:
+          a big release usually has several; a smaller one may have none.
+        </p>
 
-        <div class="movie-search-row hidden" id="movieSearchRow">
+        <div class="movie-search-row">
           <input type="text" id="movieQuery" placeholder="e.g. Spider-Man: Brand New Day" autocomplete="off" />
           <button class="analyze-btn" id="movieSearchBtn" type="button">
             <span class="spinner" id="searchSpinner"></span>
             <span id="searchLabel">Search</span>
           </button>
-          <button class="icon-btn" id="changeKeyBtn" type="button" title="Change API key">⚙</button>
         </div>
 
         <div class="movie-results" id="movieResults"></div>

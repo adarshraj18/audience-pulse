@@ -21,11 +21,10 @@ python3 -m http.server 8000
 ```
 
 Open `http://127.0.0.1:8000`. There are two ways in: search a movie by name (pulls
-its reviews from TMDB, needs a free API key, see below), or paste in a batch of
-reviews yourself (one per line, or separated by a blank line; there's a "Try a
-sample batch" button if you just want to see it work). No `pip install` needed
-for either: analysis runs entirely in your browser, so serving the static files
-is all that's required.
+its reviews from TMDB, no setup needed), or paste in a batch of reviews yourself
+(one per line, or separated by a blank line; there's a "Try a sample batch" button
+if you just want to see it work). No `pip install` needed for either: analysis
+runs entirely in your browser, so serving the static files is all that's required.
 
 ## 📌 Problem
 
@@ -81,14 +80,19 @@ in one request.
    is a small client for [The Movie Database (TMDB)](https://www.themoviedb.org)'s
    free API: search a title, pick the right match, and its reviews feed straight
    into the same analysis pipeline as pasted text. It runs entirely client-side
-   too, using an API key each visitor provides and TMDB supports for exactly
-   this browser-side pattern; the key is stored only in that browser's
-   `localStorage` and never touches this app's non-existent server. Worth
-   knowing up front: TMDB's review coverage is real but thin (a handful of
-   reviews for a big release, often none for a smaller one), nowhere near what
-   a site like Rotten Tomatoes shows on its own pages (which has no public
-   API). For a deeper batch, pasting reviews copied from wherever you found
-   them is still the more thorough option.
+   too, so there's a design choice worth being upfront about: TMDB requires an
+   API key on every request, and with no server to hold one privately, the
+   only way to skip a setup step for every visitor is to ship a real key in
+   the public JS (`DEFAULT_API_KEY` in `tmdb.js`). TMDB's v3 keys are
+   explicitly designed for exactly this client-side, publicly-visible use
+   (unlike, say, a GitHub token), so this isn't a leaked secret; the trade-off
+   is that TMDB's rate limit is shared across all of this app's traffic
+   rather than per-visitor. Worth knowing up front too: TMDB's review
+   coverage is real but thin (a handful of reviews for a big release, often
+   none for a smaller one), nowhere near what a site like Rotten Tomatoes
+   shows on its own pages (which has no public API). For a deeper batch,
+   pasting reviews copied from wherever you found them is still the more
+   thorough option.
 
 ### A design note worth being upfront about
 

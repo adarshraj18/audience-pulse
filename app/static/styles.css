@@ -244,52 +244,8 @@ header.hero {
 
 /* ---------- Search panel ---------- */
 
-.api-key-setup {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px;
-}
-
-.api-key-row { display: flex; gap: 10px; margin-top: 10px; }
-.api-key-row input[type="text"] { flex: 1; min-width: 0; }
-
-.secondary-btn {
-  border: 1px solid var(--border);
-  background: var(--surface-1);
-  color: var(--text-primary);
-  border-radius: var(--radius-sm);
-  padding: 10px 18px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.secondary-btn:hover { background: var(--surface-2); }
-
-.get-key-link {
-  display: inline-block;
-  margin-top: 10px;
-  font-size: 0.82rem;
-  color: var(--accent);
-}
-
 .movie-search-row { display: flex; gap: 10px; align-items: stretch; }
 .movie-search-row input[type="text"] { flex: 1; min-width: 0; }
-
-.icon-btn {
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  border-radius: var(--radius-sm);
-  width: 44px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  font-size: 1rem;
-  color: var(--text-secondary);
-}
-.icon-btn:hover { background: var(--surface-1); }
 
 .movie-results {
   display: flex;
