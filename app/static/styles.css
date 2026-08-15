@@ -191,6 +191,147 @@ header.hero {
 
 .input-card label .hint { color: var(--text-muted); font-size: 0.78rem; }
 
+/* ---------- Mode tabs (search vs. paste) ---------- */
+
+.mode-tabs {
+  display: inline-flex;
+  gap: 4px;
+  background: var(--surface-2);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+}
+
+.mode-tab {
+  border: none;
+  background: none;
+  padding: 8px 16px;
+  border-radius: calc(var(--radius-md) - 4px);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.mode-tab.active {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Generic visibility utility, used across tabs/panels and the search UI */
+.hidden { display: none !important; }
+
+.panel-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0 0 14px;
+}
+.panel-hint a { color: var(--accent); }
+
+.mode-panel input[type="text"] {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.mode-panel input[type="text"]:focus { border-color: var(--accent); }
+
+/* ---------- Search panel ---------- */
+
+.api-key-setup {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.api-key-row { display: flex; gap: 10px; margin-top: 10px; }
+.api-key-row input[type="text"] { flex: 1; min-width: 0; }
+
+.secondary-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.secondary-btn:hover { background: var(--surface-2); }
+
+.get-key-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: var(--accent);
+}
+
+.movie-search-row { display: flex; gap: 10px; align-items: stretch; }
+.movie-search-row input[type="text"] { flex: 1; min-width: 0; }
+
+.icon-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  width: 44px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+.icon-btn:hover { background: var(--surface-1); }
+
+.movie-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.movie-result-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+.movie-result-card:hover { background: var(--surface-1); border-color: var(--accent); }
+
+.movie-result-poster {
+  width: 36px;
+  height: 54px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--gridline);
+  flex-shrink: 0;
+}
+
+.movie-result-info strong { display: block; font-size: 0.9rem; }
+.movie-result-info span { font-size: 0.78rem; color: var(--text-muted); }
+
+.search-status {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 10px;
+}
+
 textarea#reviews {
   width: 100%;
   min-height: 160px;
@@ -429,22 +570,6 @@ button.analyze-btn:disabled { opacity: 0.6; cursor: default; }
   margin-top: 4px;
 }
 .show-more-btn:hover { background: var(--surface-1); }
-
-/* ---------- Footer ---------- */
-
-footer {
-  margin-top: 56px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-footer a { color: var(--text-secondary); }
 
 .model-note {
   font-size: 0.78rem;

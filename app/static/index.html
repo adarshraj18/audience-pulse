@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Audience Pulse: batch review sentiment reader</title>
-  <meta name="description" content="Paste a batch of audience reviews and get an instant pulse score, sentiment split, and the harshest reviews worth reading first." />
+  <meta name="description" content="Search a movie or paste a batch of audience reviews and get an instant pulse score, sentiment split, and the harshest reviews worth reading first." />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -29,30 +29,69 @@
     <section class="intro">
       <h2>What does the audience actually think?</h2>
       <p>
-        Paste in a batch of reviews for a film, show, or any title and get an instant
-        read: an overall pulse score, how split opinion is, and the harshest reviews
-        surfaced first so you don't have to scroll to find them. Built for content and
-        marketing teams who need a quick signal, not a spreadsheet.
+        Search a movie or paste in a batch of reviews for one, and get an instant read:
+        an overall pulse score, how split opinion is, and the harshest reviews surfaced
+        first so you don't have to scroll to find them. Built for content and marketing
+        teams who need a quick signal, not a spreadsheet.
       </p>
     </section>
 
     <section class="card input-card">
-      <label for="reviews">
-        <span>Paste reviews, one per line, or separated by a blank line</span>
-        <span class="hint" id="reviewCount"></span>
-      </label>
-      <textarea id="reviews" placeholder="This was one of the best films I've seen all year, the pacing never let up...
+      <div class="mode-tabs" role="tablist">
+        <button class="mode-tab active" id="tabSearch" type="button" role="tab" aria-selected="true">Search a movie</button>
+        <button class="mode-tab" id="tabPaste" type="button" role="tab" aria-selected="false">Paste reviews</button>
+      </div>
+
+      <div class="mode-panel" id="searchPanel">
+        <div class="api-key-setup" id="apiKeySetup">
+          <p class="panel-hint">
+            Search pulls real audience reviews from
+            <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>, using a free API key you
+            provide. It's stored only in this browser and sent only to TMDB, never to me or anyone else.
+          </p>
+          <div class="api-key-row">
+            <input type="text" id="apiKeyInput" placeholder="Paste your TMDB API key" autocomplete="off" />
+            <button class="secondary-btn" id="apiKeySave" type="button">Save key</button>
+          </div>
+          <a class="get-key-link" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">Get a free API key →</a>
+        </div>
+
+        <div class="movie-search-row hidden" id="movieSearchRow">
+          <input type="text" id="movieQuery" placeholder="e.g. Spider-Man: Brand New Day" autocomplete="off" />
+          <button class="analyze-btn" id="movieSearchBtn" type="button">
+            <span class="spinner" id="searchSpinner"></span>
+            <span id="searchLabel">Search</span>
+          </button>
+          <button class="icon-btn" id="changeKeyBtn" type="button" title="Change API key">⚙</button>
+        </div>
+
+        <div class="movie-results" id="movieResults"></div>
+        <p class="search-status" id="searchStatus"></p>
+      </div>
+
+      <div class="mode-panel hidden" id="pastePanel">
+        <label for="reviews">
+          <span>Paste reviews, one per line, or separated by a blank line</span>
+          <span class="hint" id="reviewCount"></span>
+        </label>
+        <p class="panel-hint">
+          Works with reviews copied from anywhere: Rotten Tomatoes, IMDb, an app store, social posts. Paste a batch
+          in and analyze, no need to type them by hand.
+        </p>
+        <textarea id="reviews" placeholder="This was one of the best films I've seen all year, the pacing never let up...
 
 Honestly disappointing. The trailer promised so much more than this delivered...
 
 A solid watch. Not perfect, but the lead performance carries it."></textarea>
-      <div class="input-footer">
-        <button class="sample-btn" id="sampleBtn" type="button">Try a sample batch</button>
-        <button class="analyze-btn" id="analyzeBtn" type="button" disabled>
-          <span class="spinner active" id="spinner"></span>
-          <span id="analyzeLabel">Loading model…</span>
-        </button>
+        <div class="input-footer">
+          <button class="sample-btn" id="sampleBtn" type="button">Try a sample batch</button>
+          <button class="analyze-btn" id="analyzeBtn" type="button" disabled>
+            <span class="spinner active" id="spinner"></span>
+            <span id="analyzeLabel">Loading model…</span>
+          </button>
+        </div>
       </div>
+
       <div class="error-banner" id="errorBanner"></div>
       <p class="model-note" id="modelStatus">Loading the model (~5MB, cached after first visit) so it can run right here in your browser…</p>
     </section>
@@ -103,11 +142,6 @@ A solid watch. Not perfect, but the lead performance carries it."></textarea>
       <div class="review-list collapsed" id="allList"></div>
       <button class="show-more-btn" id="showMoreBtn" type="button">Show all reviews</button>
     </section>
-
-    <footer>
-      <span>Model: Embedding → SimpleRNN → Dense, trained on 50k labelled reviews. Runs entirely in your browser, nothing you paste is sent anywhere.</span>
-      <a href="https://github.com/adarshraj18/audience-pulse" target="_blank" rel="noopener">Source on GitHub</a>
-    </footer>
   </div>
 
   <script type="module" src="./app.js"></script>

@@ -1,8 +1,8 @@
 # 🎬 Audience Pulse
 
-Read a room full of audience reviews in one pass. Paste a batch of reviews for a
-film, show, or any title and get an instant pulse score, sentiment split, and the
-harshest reviews surfaced first.
+Read a room full of audience reviews in one pass. Search a movie, or paste a batch
+of reviews for a film, show, or any title, and get an instant pulse score,
+sentiment split, and the harshest reviews surfaced first.
 
 > **Author:** Adarsh Raj
 > **Type:** End-to-end NLP project (deep learning) + interactive web app
@@ -20,10 +20,12 @@ cd audience-pulse/app/static
 python3 -m http.server 8000
 ```
 
-Open `http://127.0.0.1:8000` and paste in a batch of reviews (one per line, or
-separated by a blank line). There's a "Try a sample batch" button if you just want
-to see it work. No `pip install` needed for this: analysis runs entirely in your
-browser, so serving the static files is all that's required.
+Open `http://127.0.0.1:8000`. There are two ways in: search a movie by name (pulls
+its reviews from TMDB, needs a free API key, see below), or paste in a batch of
+reviews yourself (one per line, or separated by a blank line; there's a "Try a
+sample batch" button if you just want to see it work). No `pip install` needed
+for either: analysis runs entirely in your browser, so serving the static files
+is all that's required.
 
 ## 📌 Problem
 
@@ -75,6 +77,18 @@ in one request.
    score. Sentiment models are frequently shipped without any signal for when
    they're guessing outside their training distribution, so this is a small,
    honest attempt to expose that.
+5. **Two ways to get reviews in.** [`app/static/tmdb.js`](app/static/tmdb.js)
+   is a small client for [The Movie Database (TMDB)](https://www.themoviedb.org)'s
+   free API: search a title, pick the right match, and its reviews feed straight
+   into the same analysis pipeline as pasted text. It runs entirely client-side
+   too, using an API key each visitor provides and TMDB supports for exactly
+   this browser-side pattern; the key is stored only in that browser's
+   `localStorage` and never touches this app's non-existent server. Worth
+   knowing up front: TMDB's review coverage is real but thin (a handful of
+   reviews for a big release, often none for a smaller one), nowhere near what
+   a site like Rotten Tomatoes shows on its own pages (which has no public
+   API). For a deeper batch, pasting reviews copied from wherever you found
+   them is still the more thorough option.
 
 ### A design note worth being upfront about
 
@@ -118,6 +132,7 @@ note above for why that trade-off is intentional here.
 │       ├── model.js            # Client-side inference (JS port of app/model.py)
 │       ├── text.js             # Tokeniser / encoder (JS port of app/text.py)
 │       ├── analyze.js          # Batch analysis (JS port of app/analyze.py)
+│       ├── tmdb.js             # TMDB API client for the "search a movie" mode
 │       └── model/                # Browser-loadable weights, used by app.js
 ├── training/
 │   ├── train.py               # Trains the model, exports weights.npz + vocab.json

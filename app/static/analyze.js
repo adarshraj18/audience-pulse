@@ -48,7 +48,14 @@ export class Analyzer {
 
   analyzeBatch(rawText) {
     const texts = splitReviews(rawText).slice(0, MAX_REVIEWS_PER_REQUEST);
-    const reviews = texts.map((text) => this.analyzeOne(text));
+    return this.analyzeTexts(texts);
+  }
+
+  // Same aggregation, but for reviews that already arrive as discrete pieces
+  // of text (e.g. one string per TMDB review) rather than one pasted blob
+  // that needs splitting.
+  analyzeTexts(texts) {
+    const reviews = texts.slice(0, MAX_REVIEWS_PER_REQUEST).map((text) => this.analyzeOne(text));
 
     const positiveCount = reviews.filter((r) => r.sentiment === "positive").length;
     const negativeCount = reviews.length - positiveCount;

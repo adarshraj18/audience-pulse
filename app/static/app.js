@@ -1,7 +1,13 @@
 // Audience Pulse frontend: loads the model directly into the browser and
 // runs every prediction locally (model.js + text.js + analyze.js), renders
 // the pulse meter, the sentiment split, and the review lists. No framework,
-// no build step, and nothing the visitor pastes ever leaves their machine.
+// no build step, and nothing pasted or searched ever leaves the visitor's
+// machine except the TMDB lookup itself (tmdb.js), which goes straight from
+// their browser to TMDB using a key they provide.
+//
+// Two ways in: search a movie (fetches its reviews from TMDB) or paste
+// reviews from anywhere. Both end up calling Analyzer.analyzeTexts and the
+// same render() below.
 //
 // This runs client-side rather than calling the server's /api/analyze
 // (app/main.py has that route, and app.server.js calls it) because free-tier
@@ -13,6 +19,9 @@
 import { SentimentModel } from "./model.js";
 import { Encoder } from "./text.js";
 import { Analyzer } from "./analyze.js";
+import { searchMovies, fetchReviews } from "./tmdb.js";
+
+const TMDB_KEY_STORAGE = "audience-pulse-tmdb-key";
 
 const SAMPLE_BATCH = `This was one of the best films I've seen all year. The pacing never let up and the ending actually earned its emotional weight.
 
@@ -54,6 +63,21 @@ const els = {
   showMoreBtn: document.getElementById("showMoreBtn"),
   themeToggle: document.getElementById("themeToggle"),
   modelStatus: document.getElementById("modelStatus"),
+  tabSearch: document.getElementById("tabSearch"),
+  tabPaste: document.getElementById("tabPaste"),
+  searchPanel: document.getElementById("searchPanel"),
+  pastePanel: document.getElementById("pastePanel"),
+  apiKeySetup: document.getElementById("apiKeySetup"),
+  apiKeyInput: document.getElementById("apiKeyInput"),
+  apiKeySave: document.getElementById("apiKeySave"),
+  movieSearchRow: document.getElementById("movieSearchRow"),
+  movieQuery: document.getElementById("movieQuery"),
+  movieSearchBtn: document.getElementById("movieSearchBtn"),
+  searchSpinner: document.getElementById("searchSpinner"),
+  searchLabel: document.getElementById("searchLabel"),
+  changeKeyBtn: document.getElementById("changeKeyBtn"),
+  movieResults: document.getElementById("movieResults"),
+  searchStatus: document.getElementById("searchStatus"),
 };
 
 let analyzer = null;
@@ -81,6 +105,15 @@ async function loadModel() {
     setModelStatus("Couldn't load the model. Try reloading the page.");
     els.spinner.classList.remove("active");
   }
+}
+
+function showError(message) {
+  els.errorBanner.textContent = message;
+  els.errorBanner.classList.add("active");
+}
+
+function clearError() {
+  els.errorBanner.classList.remove("active");
 }
 
 function countReviews() {
@@ -149,15 +182,13 @@ function render(report) {
 
 async function analyze() {
   const text = els.textarea.value.trim();
-  els.errorBanner.classList.remove("active");
+  clearError();
   if (!text) {
-    els.errorBanner.textContent = "Paste at least one review first.";
-    els.errorBanner.classList.add("active");
+    showError("Paste at least one review first.");
     return;
   }
   if (!analyzer) {
-    els.errorBanner.textContent = "The model is still loading, one moment.";
-    els.errorBanner.classList.add("active");
+    showError("The model is still loading, one moment.");
     return;
   }
 
@@ -175,14 +206,167 @@ async function analyze() {
     }
     render(report);
   } catch (err) {
-    els.errorBanner.textContent = err.message || "Something went wrong analyzing that batch.";
-    els.errorBanner.classList.add("active");
+    showError(err.message || "Something went wrong analyzing that batch.");
   } finally {
     els.analyzeBtn.disabled = false;
     els.spinner.classList.remove("active");
     els.analyzeLabel.textContent = "Analyze pulse";
   }
 }
+
+// ---------- Mode tabs ----------
+
+function switchTab(mode) {
+  const isSearch = mode === "search";
+  els.tabSearch.classList.toggle("active", isSearch);
+  els.tabPaste.classList.toggle("active", !isSearch);
+  els.tabSearch.setAttribute("aria-selected", String(isSearch));
+  els.tabPaste.setAttribute("aria-selected", String(!isSearch));
+  els.searchPanel.classList.toggle("hidden", !isSearch);
+  els.pastePanel.classList.toggle("hidden", isSearch);
+  clearError();
+}
+
+els.tabSearch.addEventListener("click", () => switchTab("search"));
+els.tabPaste.addEventListener("click", () => switchTab("paste"));
+
+// ---------- TMDB API key (stored only in this browser) ----------
+
+function getStoredApiKey() {
+  try {
+    return localStorage.getItem(TMDB_KEY_STORAGE) || "";
+  } catch (err) {
+    return "";
+  }
+}
+
+function setStoredApiKey(key) {
+  try {
+    localStorage.setItem(TMDB_KEY_STORAGE, key);
+  } catch (err) {
+    // ignore; the key will just need to be re-entered next visit
+  }
+}
+
+function clearStoredApiKey() {
+  try {
+    localStorage.removeItem(TMDB_KEY_STORAGE);
+  } catch (err) {
+    // ignore
+  }
+}
+
+function refreshApiKeyUi() {
+  const hasKey = Boolean(getStoredApiKey());
+  els.apiKeySetup.classList.toggle("hidden", hasKey);
+  els.movieSearchRow.classList.toggle("hidden", !hasKey);
+}
+
+els.apiKeySave.addEventListener("click", () => {
+  const key = els.apiKeyInput.value.trim();
+  if (!key) return;
+  setStoredApiKey(key);
+  els.apiKeyInput.value = "";
+  refreshApiKeyUi();
+  els.movieQuery.focus();
+});
+
+els.changeKeyBtn.addEventListener("click", () => {
+  clearStoredApiKey();
+  clearError();
+  els.movieResults.innerHTML = "";
+  els.searchStatus.textContent = "";
+  refreshApiKeyUi();
+});
+
+// ---------- Movie search (TMDB) ----------
+
+async function searchMovie() {
+  const query = els.movieQuery.value.trim();
+  clearError();
+  els.searchStatus.textContent = "";
+  els.movieResults.innerHTML = "";
+  if (!query) {
+    showError("Type a movie name first.");
+    return;
+  }
+  const apiKey = getStoredApiKey();
+  if (!apiKey) {
+    refreshApiKeyUi();
+    return;
+  }
+
+  els.movieSearchBtn.disabled = true;
+  els.searchSpinner.classList.add("active");
+  els.searchLabel.textContent = "Searching…";
+
+  try {
+    const movies = await searchMovies(query, apiKey);
+    if (!movies.length) {
+      els.searchStatus.textContent = `No matches for "${query}" on TMDB.`;
+      return;
+    }
+    renderMovieResults(movies, apiKey);
+  } catch (err) {
+    showError(err.message || "Search failed. Try again.");
+  } finally {
+    els.movieSearchBtn.disabled = false;
+    els.searchSpinner.classList.remove("active");
+    els.searchLabel.textContent = "Search";
+  }
+}
+
+function renderMovieResults(movies, apiKey) {
+  els.movieResults.innerHTML = movies
+    .map((m, i) => {
+      const poster = m.posterUrl
+        ? `<img class="movie-result-poster" src="${m.posterUrl}" alt="" />`
+        : `<div class="movie-result-poster"></div>`;
+      return `
+        <button class="movie-result-card" type="button" data-index="${i}">
+          ${poster}
+          <div class="movie-result-info">
+            <strong>${escapeHtml(m.title)}</strong>
+            <span>${escapeHtml(m.year)}</span>
+          </div>
+        </button>`;
+    })
+    .join("");
+
+  els.movieResults.querySelectorAll(".movie-result-card").forEach((btn, i) => {
+    btn.addEventListener("click", () => selectMovie(movies[i], apiKey));
+  });
+}
+
+async function selectMovie(movie, apiKey) {
+  clearError();
+  els.searchStatus.textContent = `Fetching reviews for ${movie.title}…`;
+
+  if (!analyzer) {
+    showError("The model is still loading, one moment, then try again.");
+    return;
+  }
+
+  try {
+    const texts = await fetchReviews(movie.id, apiKey);
+    if (!texts.length) {
+      els.searchStatus.textContent = `TMDB has no written reviews for ${movie.title} (${movie.year}). Its review coverage is thin for a lot of titles; try the Paste tab with reviews copied from elsewhere instead.`;
+      return;
+    }
+    const report = analyzer.analyzeTexts(texts);
+    els.searchStatus.textContent = `Analyzed ${texts.length} review${texts.length === 1 ? "" : "s"} for ${movie.title} (${movie.year}) from TMDB.`;
+    render(report);
+  } catch (err) {
+    showError(err.message || "Couldn't fetch reviews for that title.");
+  }
+}
+
+els.movieSearchBtn.addEventListener("click", searchMovie);
+els.movieQuery.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") searchMovie();
+});
+
+refreshApiKeyUi();
 
 els.textarea.addEventListener("input", countReviews);
 els.analyzeBtn.addEventListener("click", analyze);
