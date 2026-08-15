@@ -48,13 +48,12 @@ Honestly disappointing. The trailer promised so much more than this delivered...
 A solid watch. Not perfect, but the lead performance carries it."></textarea>
       <div class="input-footer">
         <button class="sample-btn" id="sampleBtn" type="button">Try a sample batch</button>
-        <button class="analyze-btn" id="analyzeBtn" type="button" disabled>
-          <span class="spinner active" id="spinner"></span>
-          <span id="analyzeLabel">Loading model…</span>
+        <button class="analyze-btn" id="analyzeBtn" type="button">
+          <span class="spinner" id="spinner"></span>
+          <span id="analyzeLabel">Analyze pulse</span>
         </button>
       </div>
       <div class="error-banner" id="errorBanner"></div>
-      <p class="model-note" id="modelStatus">Loading the model (~5MB, cached after first visit) so it can run right here in your browser…</p>
     </section>
 
     <section id="results">
@@ -105,11 +104,11 @@ A solid watch. Not perfect, but the lead performance carries it."></textarea>
     </section>
 
     <footer>
-      <span>Model: Embedding → SimpleRNN → Dense, trained on 50k labelled reviews. Runs entirely in your browser, nothing you paste is sent anywhere.</span>
+      <span>Model: Embedding → SimpleRNN → Dense, trained on 50k labelled reviews. NumPy inference, no TensorFlow at request time.</span>
       <a href="https://github.com/adarshraj18/audience-pulse" target="_blank" rel="noopener">Source on GitHub</a>
     </footer>
   </div>
 
-  <script type="module" src="./app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>

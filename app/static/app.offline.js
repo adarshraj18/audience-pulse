@@ -1,5 +1,19 @@
-// Audience Pulse frontend: talks to /api/analyze, renders the pulse meter,
-// the sentiment split, and the review lists. No framework, no build step.
+// Alternate frontend entry point: loads the model directly into the browser
+// and runs every prediction locally (model.js + text.js + analyze.js),
+// instead of calling the server's /api/analyze. NOT loaded by default;
+// index.html loads app.js, which talks to the FastAPI backend, since the
+// live deployment (Render) is a real always-on server.
+//
+// This file exists for anyone who wants to deploy app/static/ as a pure
+// static site with zero backend (e.g. GitHub Pages, a static Hugging Face
+// Space): swap the <script> tag in index.html from app.js to this file
+// (type="module" is required for the imports below), and nothing you paste
+// ever leaves the visitor's machine. It's verified against the same trained
+// model as app.js: see scripts/verify_js_model.mjs.
+
+import { SentimentModel } from "./model.js";
+import { Encoder } from "./text.js";
+import { Analyzer } from "./analyze.js";
 
 const SAMPLE_BATCH = `This was one of the best films I've seen all year. The pacing never let up and the ending actually earned its emotional weight.
 
@@ -40,7 +54,35 @@ const els = {
   allList: document.getElementById("allList"),
   showMoreBtn: document.getElementById("showMoreBtn"),
   themeToggle: document.getElementById("themeToggle"),
+  modelStatus: document.getElementById("modelStatus"),
 };
+
+let analyzer = null;
+
+// Using this entry point standalone (without index.html's #modelStatus
+// element and the button's initial disabled state) still works; these
+// status updates are just skipped if that markup isn't present.
+function setModelStatus(text) {
+  if (els.modelStatus) els.modelStatus.textContent = text;
+}
+
+async function loadModel() {
+  try {
+    const [model, encoder] = await Promise.all([SentimentModel.load("./model"), Encoder.load("./model/vocab.json")]);
+    analyzer = new Analyzer(model, encoder);
+    els.analyzeBtn.disabled = false;
+    els.spinner.classList.remove("active");
+    els.analyzeLabel.textContent = "Analyze pulse";
+    setModelStatus("Model loaded, ready to analyze, entirely in your browser.");
+    setTimeout(() => {
+      if (els.modelStatus) els.modelStatus.style.display = "none";
+    }, 2500);
+  } catch (err) {
+    els.analyzeLabel.textContent = "Model failed to load";
+    setModelStatus("Couldn't load the model. Try reloading the page.");
+    els.spinner.classList.remove("active");
+  }
+}
 
 function countReviews() {
   const text = els.textarea.value;
@@ -114,25 +156,27 @@ async function analyze() {
     els.errorBanner.classList.add("active");
     return;
   }
+  if (!analyzer) {
+    els.errorBanner.textContent = "The model is still loading, one moment.";
+    els.errorBanner.classList.add("active");
+    return;
+  }
 
   els.analyzeBtn.disabled = true;
   els.spinner.classList.add("active");
   els.analyzeLabel.textContent = "Analyzing…";
 
   try {
-    const res = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.detail || "Something went wrong analyzing that batch.");
+    // Yield to the browser first so the "Analyzing…" state actually paints
+    // before the (synchronous, CPU-bound) inference loop runs.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const report = analyzer.analyzeBatch(text);
+    if (!report.reviews.length) {
+      throw new Error("Couldn't find any reviews in that text.");
     }
-    const report = await res.json();
     render(report);
   } catch (err) {
-    els.errorBanner.textContent = err.message || "Couldn't reach the analysis service.";
+    els.errorBanner.textContent = err.message || "Something went wrong analyzing that batch.";
     els.errorBanner.classList.add("active");
   } finally {
     els.analyzeBtn.disabled = false;
@@ -151,6 +195,8 @@ els.showMoreBtn.addEventListener("click", () => {
   const collapsed = els.allList.classList.toggle("collapsed");
   els.showMoreBtn.textContent = collapsed ? "Show all reviews" : "Show fewer";
 });
+
+loadModel();
 
 // Theme toggle: cycles light -> dark -> system, persisted locally.
 function applyTheme(theme) {

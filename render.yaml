@@ -1,0 +1,11 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Lets Render create the service with one click ("New +" -> "Blueprint"),
+# instead of configuring each field by hand in the dashboard.
+services:
+  - type: web
+    name: audience-pulse
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
