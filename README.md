@@ -12,7 +12,7 @@ harshest reviews surfaced first.
 
 ## 🖥️ Try the App
 
-**[Live demo →](#)** _(Render URL added once deployed)_
+**[Live demo →](https://audience-pulse.onrender.com)**
 
 ```bash
 git clone https://github.com/adarshraj18/audience-pulse.git
