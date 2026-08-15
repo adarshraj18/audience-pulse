@@ -1,0 +1,9 @@
+{
+  "name": "audience-pulse",
+  "private": true,
+  "type": "module",
+  "description": "Client-side inference and verification scripts for Audience Pulse. No build step, no npm dependencies: app/static/*.js is served as-is.",
+  "scripts": {
+    "verify-model": "node scripts/verify_js_model.mjs"
+  }
+}

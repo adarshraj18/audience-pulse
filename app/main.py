@@ -1,9 +1,15 @@
-"""Audience Pulse API.
+"""Audience Pulse API and static frontend host.
 
-A small FastAPI service that scores a batch of audience reviews for a title
-and returns an overall pulse, the positive/negative split, and the harshest
-reviews worth reading first. Serves the static frontend directly, so the
-whole app is one process to deploy.
+The deployed app (app/static/) runs inference entirely in the browser via
+model.js, so this FastAPI service isn't on the critical path for the live
+demo. It exists for two reasons:
+
+1. It serves app/static/ as-is, which is convenient for local development
+   (`uvicorn app.main:app --reload`) and doubles as an optional Docker
+   deployment target, since the static bundle works unmodified either way.
+2. /api/analyze exposes the same, separately-tested batch analysis as a
+   plain JSON API, for anyone who wants programmatic access without
+   shipping the model to a client.
 """
 
 from __future__ import annotations
@@ -12,7 +18,6 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -87,9 +92,8 @@ def health() -> dict:
     return {"status": "ok", "max_reviews_per_request": MAX_REVIEWS_PER_REQUEST}
 
 
-@app.get("/")
-def root() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
-
-
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+# Mounted last and at the root, after the /api/* routes above, so it only
+# ever handles paths those routes didn't already claim. html=True serves
+# index.html for "/", matching how a static host (the deployed target)
+# behaves, so local dev exercises the exact bundle that ships.
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
